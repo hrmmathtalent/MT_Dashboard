@@ -1,0 +1,832 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Science Talent Branch Revenue Dashboard</title>
+    <script src="https://cdn.tailwindcss.com">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js">
+    </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brandRed: '#d22121',
+                        brandYellow: '#fcb00e',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background: linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%);
+            background-image: radial-gradient(at 0% 0%, hsla(353, 73%, 47%, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, hsla(41, 97%, 52%, 0.15) 0px, transparent 50%);
+            min-height: 100vh;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.6);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.8);
+            box-shadow: 0 4px 16px 0 rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px 0 rgba(210, 33, 33, 0.15);
+        }
+
+        @keyframes slideInUp {
+            from {
+                transform: translateY(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+            }
+            to {
+                opacity: 0;
+            }
+        }
+        .toast-enter {
+            animation: slideInUp 0.3s ease forwards;
+        }
+        .toast-leave {
+            animation: fadeOut 0.3s ease forwards;
+        }
+
+        /* Filter Chip Styles */
+        .filter-chip {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        .filter-chip.active {
+            background-color: #d22121;
+            color: #ffffff;
+            box-shadow: 0 2px 8px rgba(210, 33, 33, 0.3);
+        }
+        .filter-chip:not(.active) {
+            background-color: #f3f4f6;
+            color: #6b7280;
+        }
+        .filter-chip:not(.active):hover {
+            background-color: #e5e7eb;
+            color: #374151;
+        }
+    </style>
+</head>
+<body class="text-gray-800 font-sans antialiased overflow-hidden flex">
+
+    <!-- TODO: https://script.google.com/macros/s/AKfycbxzdgNCu14u5OW_GouBlYh_vZ_LeCGkaHcWjjeF5AIKBTeKQfRDG9gOV3sm2hZ0sY9L5Q/exec -->
+    <script>
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbxzdgNCu14u5OW_GouBlYh_vZ_LeCGkaHcWjjeF5AIKBTeKQfRDG9gOV3sm2hZ0sY9L5Q/exec";
+        // ⚠️ กำหนดให้ GAS ดึงข้อมูลตั้งแต่แถวที่ 8 ลงไปเท่านั้น (ข้ามแถว 1-7)
+        // ถ้า GAS จัดการ slice มาแล้วให้ตั้งเป็น 0
+        const DATA_START_ROW = 7; // 0-indexed: แถวที่ 8 = index 7
+    </script>
+
+    <!-- Sidebar -->
+    <aside class="w-64 glass-panel h-screen flex flex-col justify-between fixed z-20">
+        <div>
+            <!-- Logo Section -->
+            <div class="p-6 flex flex-col items-center border-b border-white/40">
+                <div
+                    class="w-24 h-24 rounded-full bg-white shadow-lg overflow-hidden flex items-center justify-center border-4 border-white/50">
+                    <img src="https://mathtalentschool.com/th/wp-content/uploads/2023/06/logo_sc-1-300x300.png"
+                    alt="Dr.Ying Logo" class="w-full h-full object-cover">
+                </div>
+                <h1 class="mt-4 text-center font-bold text-brandRed text-lg leading-tight">Science Talent<br><span
+                        class="text-sm text-gray-600 font-medium">by Dr.Ying</span></h1>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="p-4 space-y-2 mt-4">
+                <button onclick="switchMenu('dashboard')" id="btn-dashboard"
+                class="w-full flex items-center space-x-3 px-4 py-3 bg-brandRed text-white rounded-xl shadow-md transition-all">
+                <i class="fas fa-chart-pie w-5"></i>
+                <span class="font-medium">ภาพรวม (Dashboard)</span>
+            </button>
+            <button onclick="switchMenu('table')" id="btn-table"
+            class="w-full flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-white/50 rounded-xl transition-all">
+            <i class="fas fa-user-graduate w-5"></i>
+            <span class="font-medium">ข้อมูลนักเรียน (Data)</span>
+        </button>
+    </nav>
+</div>
+<!-- ✅ ลบ footer "Powered by Gigi 💅 for Obi (Est. 1998)" ออกแล้ว -->
+<div class="p-4"></div>
+</aside>
+
+<!-- Main Content -->
+<main class="ml-64 flex-1 h-screen overflow-y-auto">
+    <!-- Top Navbar -->
+    <header
+    class="glass-panel sticky top-0 z-10 px-8 py-4 flex justify-between items-center border-b border-white/40">
+    <h2 id="page-title" class="text-2xl font-bold text-gray-800">สรุปรายได้ (Revenue Summary)</h2>
+
+    <div class="flex items-center space-x-4">
+        <!-- Role Selector -->
+        <div class="flex items-center space-x-2 bg-white/60 px-3 py-1.5 rounded-lg border border-white">
+            <i class="fas fa-user-tie text-brandRed"></i>
+            <select id="role-selector" onchange="handleRoleChange()"
+            class="bg-transparent font-medium text-sm outline-none cursor-pointer">
+            <option value="CEO">CEO (ดูทุกสาขา)</option>
+            <option value="Admin">Admin (จัดการสาขา)</option>
+        </select>
+    </div>
+
+    <!-- Branch Selector (ซ่อนตอนเป็น CEO) -->
+    <div id="branch-selector-container"
+    class="hidden items-center space-x-2 bg-white/60 px-3 py-1.5 rounded-lg border border-white">
+    <i class="fas fa-store text-brandYellow"></i>
+    <select id="branch-selector" onchange="calculateAndRender()"
+    class="bg-transparent font-medium text-sm outline-none cursor-pointer max-w-[150px]">
+    <option value="">กำลังโหลดสาขา...</option>
+</select>
+</div>
+</div>
+</header>
+
+<!-- Content Area -->
+<div class="p-8 pb-20">
+
+    <!-- Dashboard View -->
+    <div id="view-dashboard" class="space-y-6 block">
+
+        <!-- Summary Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <!-- Total Revenue -->
+            <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+                <div class="absolute -right-6 -top-6 w-24 h-24 bg-brandRed/10 rounded-full blur-xl"></div>
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="text-sm font-semibold text-gray-500 mb-1">รายได้รวม (Total Revenue)</p>
+                        <h3 id="card-total-revenue" class="text-3xl font-bold text-gray-800">฿0.00</h3>
+                    </div>
+                    <div
+                    class="w-12 h-12 rounded-xl bg-brandRed/10 text-brandRed flex items-center justify-center text-xl">
+                    <i class="fas fa-wallet"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unique Students -->
+        <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-brandYellow/20 rounded-full blur-xl"></div>
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500 mb-1">นักเรียนทั้งหมด (Unique Students)</p>
+                    <h3 id="card-total-students" class="text-3xl font-bold text-gray-800">0 <span
+                        class="text-base font-normal text-gray-500">คน</span></h3>
+                    </div>
+                    <div
+                    class="w-12 h-12 rounded-xl bg-brandYellow/20 text-brandYellow flex items-center justify-center text-xl">
+                    <i class="fas fa-users"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Avg Revenue per Student -->
+        <div class="glass-card rounded-2xl p-6 relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-green-500/10 rounded-full blur-xl"></div>
+            <div class="flex justify-between items-start">
+                <div>
+                    <p class="text-sm font-semibold text-gray-500 mb-1">รายได้เฉลี่ย/คน (Avg. Revenue)</p>
+                    <h3 id="card-avg-revenue" class="text-3xl font-bold text-gray-800">฿0.00</h3>
+                </div>
+                <div
+                class="w-12 h-12 rounded-xl bg-green-500/10 text-green-600 flex items-center justify-center text-xl">
+                <i class="fas fa-chart-line"></i>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Area -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <!-- Bar Chart: เปรียบเทียบสาขา (โชว์เฉพาะ CEO) -->
+    <div id="bar-chart-container" class="glass-card rounded-2xl p-6 h-[400px]">
+        <h4 class="text-lg font-semibold text-gray-700 mb-4">เปรียบเทียบรายได้แต่ละสาขา</h4>
+        <canvas id="branchBarChart"></canvas>
+    </div>
+
+    <!-- Line Chart: เทรนด์รายได้รายเดือน -->
+    <div id="line-chart-container" class="glass-card rounded-2xl p-6 h-[400px] lg:col-span-1">
+        <h4 id="line-chart-title" class="text-lg font-semibold text-gray-700 mb-4">เทรนด์รายได้รวมรายเดือน</h4>
+        <canvas id="monthlyLineChart"></canvas>
+    </div>
+</div>
+
+    <!-- ✅ NEW: ตารางรายละเอียดทั้งหมด พร้อม Filter Chips -->
+    <div id="detail-table-section" class="glass-card rounded-2xl overflow-hidden flex flex-col">
+        <div class="p-5 border-b border-white/40 bg-white/30">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                <h4 class="text-lg font-semibold text-gray-700">
+                    <i class="fas fa-table mr-2 text-brandRed"></i>ตารางรายละเอียดทั้งหมด
+                    <span id="detail-table-count" class="text-sm font-normal text-gray-500 ml-2"></span>
+                </h4>
+            </div>
+
+            <!-- Filter Chips: สาขา -->
+            <div class="flex flex-wrap items-center gap-2 mb-3">
+                <span class="text-xs font-semibold text-gray-500 mr-1"><i class="fas fa-store-alt mr-1"></i>สาขา:</span>
+                <div id="branch-chips-container" class="flex flex-wrap gap-1.5">
+                    <!-- JS จะสร้าง chips ตรงนี้ -->
+                    <span class="filter-chip active px-3 py-1.5 rounded-full text-xs font-medium" data-filter="ทั้งหมด" data-type="branch">ทั้งหมด</span>
+                </div>
+            </div>
+
+            <!-- Filter Chips: ระดับชั้น -->
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="text-xs font-semibold text-gray-500 mr-1"><i class="fas fa-layer-group mr-1"></i>ระดับชั้น:</span>
+                <div id="level-chips-container" class="flex flex-wrap gap-1.5">
+                    <!-- JS จะสร้าง chips ตรงนี้ -->
+                    <span class="filter-chip active px-3 py-1.5 rounded-full text-xs font-medium" data-filter="ทุกระดับชั้น" data-type="level">ทุกระดับชั้น</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="flex-1 overflow-auto max-h-[450px]">
+            <table class="w-full text-left border-collapse">
+                <thead class="bg-gray-50/80 sticky top-0 backdrop-blur-md text-gray-600 text-xs shadow-sm z-10">
+                    <tr>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap">สาขา</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap">วันที่</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap">ชื่อ</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap">ชื่อเล่น</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap">ระดับชั้น</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap text-right">ค่าหนังสือ</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap text-right">ค่าคอร์ส</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap text-right text-brandRed">รวม</th>
+                        <th class="py-3 px-4 font-semibold whitespace-nowrap text-center">ช่องทาง</th>
+                    </tr>
+                </thead>
+                <tbody id="detail-table-body" class="divide-y divide-gray-200/50 text-xs">
+                    <tr><td colspan="9" class="text-center py-8 text-gray-500">ไม่มีข้อมูลแสดงผล</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Data Table View (Sidebar) -->
+<div id="view-table"
+class="hidden glass-card rounded-2xl overflow-hidden flex-col h-[calc(100vh-140px)]">
+<div class="p-6 border-b border-white/40 flex justify-between items-center bg-white/30">
+    <h4 class="text-lg font-semibold text-gray-700">ฐานข้อมูลนักเรียน <span id="table-branch-name"
+        class="text-sm font-normal text-brandRed"></span></h4>
+        <div class="text-sm text-gray-500 bg-white/50 px-3 py-1 rounded-full"><i
+            class="fas fa-info-circle mr-1"></i> ดึงข้อมูลตั้งแต่แถวที่ 8 ลงไป (คอลัมน์ D-K)</div>
+        </div>
+        <div class="flex-1 overflow-auto p-0">
+            <table class="w-full text-left border-collapse">
+                <thead
+                class="bg-gray-50/80 sticky top-0 backdrop-blur-md text-gray-600 text-sm shadow-sm z-10">
+                <tr>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap">สาขา</th>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap">วันที่ (Date)</th>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap">ชื่อ (Name)</th>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap">ชื่อเล่น</th>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap">ระดับชั้น</th>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap text-right">ค่าหนังสือ</th>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap text-right">ค่าคอร์ส</th>
+                    <th class="py-4 px-6 font-semibold whitespace-nowrap text-right text-brandRed">รวม
+                        (Total)</th>
+                        <th class="py-4 px-6 font-semibold whitespace-nowrap text-center">ช่องทาง</th>
+                    </tr>
+                </thead>
+                <tbody id="student-table-body" class="divide-y divide-gray-200/50 text-sm">
+                    <tr><td colspan="9" class="text-center py-8 text-gray-500">ไม่มีข้อมูลแสดงผล</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+</div>
+</main>
+
+<!-- Modal Warning: ไม่มี GAS URL -->
+<div id="warning-modal"
+class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm hidden opacity-0 transition-opacity duration-300">
+<div class="bg-white rounded-2xl shadow-2xl p-8 max-w-sm w-full mx-4 transform scale-95 transition-transform duration-300"
+id="warning-modal-content">
+<div class="w-16 h-16 bg-red-100 text-brandRed rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+    <i class="fas fa-exclamation-triangle"></i>
+</div>
+<h3 class="text-xl font-bold text-center text-gray-800 mb-2">ยังไม่ได้รับข้อมูลจาก GAS</h3>
+<p class="text-center text-gray-500 mb-6 text-sm">กรุณาใส่ URL ของ Google Apps Script ในโค้ดบรรทัดที่ 57
+เพื่อดึงข้อมูลจริงมาแสดงนะคะเพื่อนสาว!</p>
+<button onclick="closeModal()"
+class="w-full bg-brandRed hover:bg-red-700 text-white font-semibold py-3 rounded-xl transition-colors">
+โอเค จีจี๊! (ดูบอร์ดเปล่า)
+</button>
+</div>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2"></div>
+
+<script>
+    // --- State Management ---
+    let rawData = {};
+    let branchNames = [];
+    let barChartInstance = null;
+    let lineChartInstance = null;
+
+    // --- Filter State สำหรับตารางรายละเอียดใน Dashboard ---
+    let activeBranchFilter = 'ทั้งหมด';
+    let activeLevelFilter = 'ทุกระดับชั้น';
+    let allDetailStudents = []; // นักเรียนทั้งหมด (จากแถว 8+) สำหรับตารางรายละเอียด
+
+    // --- ตั้งค่ารูปแบบตัวเลข ---
+    const formatMoney = (num) => {
+        return new Intl.NumberFormat('th-TH', {
+            style: 'currency',
+            currency: 'THB',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(num);
+    };
+    const formatNumber = (num) => {
+        return new Intl.NumberFormat('th-TH').format(num);
+    };
+
+    // --- จัดการ UI & เมนู ---
+    function switchMenu(menu) {
+        const btnDash = document.getElementById('btn-dashboard');
+        const btnTable = document.getElementById('btn-table');
+        const viewDash = document.getElementById('view-dashboard');
+        const viewTable = document.getElementById('view-table');
+        const pageTitle = document.getElementById('page-title');
+
+        if (menu === 'dashboard') {
+            btnDash.className =
+                "w-full flex items-center space-x-3 px-4 py-3 bg-brandRed text-white rounded-xl shadow-md transition-all";
+            btnTable.className =
+                "w-full flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-white/50 rounded-xl transition-all";
+            viewDash.classList.remove('hidden');
+            viewDash.classList.add('block');
+            viewTable.classList.add('hidden');
+            viewTable.classList.remove('flex');
+            pageTitle.innerText = "สรุปรายได้ (Revenue Summary)";
+        } else {
+            btnTable.className =
+                "w-full flex items-center space-x-3 px-4 py-3 bg-brandRed text-white rounded-xl shadow-md transition-all";
+            btnDash.className =
+                "w-full flex items-center space-x-3 px-4 py-3 text-gray-600 hover:bg-white/50 rounded-xl transition-all";
+            viewTable.classList.remove('hidden');
+            viewTable.classList.add('flex');
+            viewDash.classList.add('hidden');
+            viewDash.classList.remove('block');
+            pageTitle.innerText = "ข้อมูลนักเรียน (Student Data)";
+        }
+    }
+
+    // --- จัดการ Roles & Branch Selection ---
+    function handleRoleChange() {
+        const role = document.getElementById('role-selector').value;
+        const branchContainer = document.getElementById('branch-selector-container');
+        const barChartContainer = document.getElementById('bar-chart-container');
+        const lineChartContainer = document.getElementById('line-chart-container');
+        const lineChartTitle = document.getElementById('line-chart-title');
+
+        if (role === 'CEO') {
+            branchContainer.classList.add('hidden');
+            branchContainer.classList.remove('flex');
+
+            barChartContainer.classList.remove('hidden');
+            lineChartContainer.classList.remove('lg:col-span-2');
+            lineChartContainer.classList.add('lg:col-span-1');
+            lineChartTitle.innerText = "เทรนด์รายได้รวมรายเดือน (ทุกสาขา)";
+        } else {
+            branchContainer.classList.remove('hidden');
+            branchContainer.classList.add('flex');
+
+            barChartContainer.classList.add('hidden');
+            lineChartContainer.classList.remove('lg:col-span-1');
+            lineChartContainer.classList.add('lg:col-span-2');
+            lineChartTitle.innerText = "เทรนด์รายได้รายเดือน (สาขาที่เลือก)";
+
+            const select = document.getElementById('branch-selector');
+            if (select.value === "" && branchNames.length > 0) {
+                select.value = branchNames[0];
+            }
+        }
+        calculateAndRender();
+    }
+
+    // --- การแจ้งเตือนต่างๆ ---
+    function showModal() {
+        const modal = document.getElementById('warning-modal');
+        const content = document.getElementById('warning-modal-content');
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            modal.classList.remove('opacity-0');
+            content.classList.remove('scale-95');
+        }, 10);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById('warning-modal');
+        const content = document.getElementById('warning-modal-content');
+        modal.classList.add('opacity-0');
+        content.classList.add('scale-95');
+        setTimeout(() => {
+            modal.classList.add('hidden');
+        }, 300);
+
+        calculateAndRender();
+    }
+
+    function showToast(message) {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className =
+            `glass-card border-l-4 border-green-500 px-4 py-3 rounded-lg shadow-lg flex items-center space-x-3 toast-enter`;
+        toast.innerHTML = `
+                <i class="fas fa-check-circle text-green-500"></i>
+                <span class="text-sm font-medium text-gray-700">${message}</span>
+            `;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.remove('toast-enter');
+            toast.classList.add('toast-leave');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
+    }
+
+    // --- Fetch Data จาก GAS ---
+    async function loadData() {
+        if (!GAS_URL || GAS_URL.trim() === "") {
+            showModal();
+            return;
+        }
+
+        try {
+            document.getElementById('branch-selector').innerHTML =
+            '<option value="">กำลังโหลด...</option>';
+
+            const response = await fetch(GAS_URL);
+            const result = await response.json();
+
+            if (result.status === 'success') {
+                rawData = result.data;
+                branchNames = Object.keys(rawData);
+
+                const branchSelect = document.getElementById('branch-selector');
+                branchSelect.innerHTML = '';
+                branchNames.forEach(branch => {
+                    const option = document.createElement('option');
+                    option.value = branch;
+                    option.textContent = branch;
+                    branchSelect.appendChild(option);
+                });
+
+                showToast("ข้อมูลอัปเดตจาก Sheet สำเร็จ! ✨");
+                handleRoleChange();
+            }
+        } catch (error) {
+            console.error("Error fetching data:", error);
+            alert("เกิดข้อผิดพลาดในการดึงข้อมูลจาก GAS ค่ะเพื่อน");
+        }
+    }
+
+    // --- การคำนวณและประมวลผล (Core Logic) ---
+    function calculateAndRender() {
+        const role = document.getElementById('role-selector').value;
+        const selectedBranch = document.getElementById('branch-selector').value;
+
+        let totalRevenue = 0;
+        let uniqueStudents = new Set();
+        let tableData = [];
+        allDetailStudents = []; // รีเซ็ตข้อมูลสำหรับตารางรายละเอียด
+
+        let branchRevenues = {};
+        let monthlyDataRaw = {};
+
+        const branchesToProcess = (role === 'CEO') ? branchNames : (selectedBranch ? [selectedBranch] : []);
+
+        branchesToProcess.forEach(branchName => {
+            const sheetData = rawData[branchName];
+            if (!sheetData) return;
+
+            let branchTotal = 0;
+
+            // ✅ ดึงเฉพาะข้อมูลตั้งแต่แถว 8 ลงไป (slice จาก index DATA_START_ROW)
+            const studentsData = sheetData.students.slice(DATA_START_ROW);
+
+            studentsData.forEach(student => {
+                totalRevenue += student.total;
+                branchTotal += student.total;
+                uniqueStudents.add(student.name.trim());
+
+                const enrichedStudent = {
+                    ...student,
+                    displayBranch: branchName
+                };
+                tableData.push(enrichedStudent);
+                allDetailStudents.push(enrichedStudent);
+            });
+
+            branchRevenues[branchName] = branchTotal;
+
+            // ประมวลผลตารางขวา (รายเดือน M-Q)
+            sheetData.monthly.forEach(monthRow => {
+                const m = monthRow.month.trim();
+                if (!monthlyDataRaw[m]) monthlyDataRaw[m] = 0;
+                monthlyDataRaw[m] += monthRow.totalAmt;
+            });
+        });
+
+        // 1. อัปเดต Summary Cards
+        document.getElementById('card-total-revenue').innerText = formatMoney(totalRevenue);
+        document.getElementById('card-total-students').innerHTML =
+            `${formatNumber(uniqueStudents.size)} <span class="text-base font-normal text-gray-500">คน</span>`;
+
+        const avgRev = uniqueStudents.size > 0 ? (totalRevenue / uniqueStudents.size) : 0;
+        document.getElementById('card-avg-revenue').innerText = formatMoney(avgRev);
+
+        // 2. อัปเดตกราฟ
+        renderCharts(role, branchRevenues, monthlyDataRaw);
+
+        // 3. อัปเดต Table ใน Sidebar (Data View)
+        renderTable(tableData, role, selectedBranch);
+
+        // 4. ✅ อัปเดต Filter Chips และตารางรายละเอียดใน Dashboard
+        renderFilterChips();
+        renderDetailTable();
+    }
+
+    // --- ✅ สร้าง Filter Chips ---
+    function renderFilterChips() {
+        const branchChipsContainer = document.getElementById('branch-chips-container');
+        const levelChipsContainer = document.getElementById('level-chips-container');
+
+        // ดึงสาขาที่ไม่ซ้ำจาก allDetailStudents
+        const uniqueBranches = [...new Set(allDetailStudents.map(s => s.displayBranch))].sort();
+
+        // ดึงระดับชั้นที่ไม่ซ้ำ
+        const uniqueLevels = [...new Set(allDetailStudents.map(s => s.level).filter(Boolean))].sort();
+
+        // --- Branch Chips ---
+        branchChipsContainer.innerHTML = '';
+        const allBranchChip = document.createElement('span');
+        allBranchChip.className = `filter-chip px-3 py-1.5 rounded-full text-xs font-medium ${activeBranchFilter === 'ทั้งหมด' ? 'active' : ''}`;
+        allBranchChip.dataset.filter = 'ทั้งหมด';
+        allBranchChip.dataset.type = 'branch';
+        allBranchChip.textContent = 'ทั้งหมด';
+        allBranchChip.addEventListener('click', () => handleChipClick('branch', 'ทั้งหมด'));
+        branchChipsContainer.appendChild(allBranchChip);
+
+        uniqueBranches.forEach(branch => {
+            const chip = document.createElement('span');
+            chip.className =
+                `filter-chip px-3 py-1.5 rounded-full text-xs font-medium ${activeBranchFilter === branch ? 'active' : ''}`;
+            chip.dataset.filter = branch;
+            chip.dataset.type = 'branch';
+            chip.textContent = branch;
+            chip.addEventListener('click', () => handleChipClick('branch', branch));
+            branchChipsContainer.appendChild(chip);
+        });
+
+        // --- Level Chips ---
+        levelChipsContainer.innerHTML = '';
+        const allLevelChip = document.createElement('span');
+        allLevelChip.className =
+            `filter-chip px-3 py-1.5 rounded-full text-xs font-medium ${activeLevelFilter === 'ทุกระดับชั้น' ? 'active' : ''}`;
+        allLevelChip.dataset.filter = 'ทุกระดับชั้น';
+        allLevelChip.dataset.type = 'level';
+        allLevelChip.textContent = 'ทุกระดับชั้น';
+        allLevelChip.addEventListener('click', () => handleChipClick('level', 'ทุกระดับชั้น'));
+        levelChipsContainer.appendChild(allLevelChip);
+
+        uniqueLevels.forEach(level => {
+            const chip = document.createElement('span');
+            chip.className =
+                `filter-chip px-3 py-1.5 rounded-full text-xs font-medium ${activeLevelFilter === level ? 'active' : ''}`;
+            chip.dataset.filter = level;
+            chip.dataset.type = 'level';
+            chip.textContent = level;
+            chip.addEventListener('click', () => handleChipClick('level', level));
+            levelChipsContainer.appendChild(chip);
+        });
+    }
+
+    // --- ✅ จัดการการคลิก Filter Chip ---
+    function handleChipClick(type, value) {
+        if (type === 'branch') {
+            activeBranchFilter = value;
+        } else if (type === 'level') {
+            activeLevelFilter = value;
+        }
+
+        // อัปเดตสถานะ active ของ chips
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            const chipType = chip.dataset.type;
+            const chipValue = chip.dataset.filter;
+
+            if (chipType === 'branch') {
+                chip.classList.toggle('active', chipValue === activeBranchFilter);
+            } else if (chipType === 'level') {
+                chip.classList.toggle('active', chipValue === activeLevelFilter);
+            }
+        });
+
+        // รีเรนเดอร์เฉพาะตารางรายละเอียด
+        renderDetailTable();
+    }
+
+    // --- ✅ เรนเดอร์ตารางรายละเอียดใน Dashboard ---
+    function renderDetailTable() {
+        const tbody = document.getElementById('detail-table-body');
+        const countSpan = document.getElementById('detail-table-count');
+
+        // กรองข้อมูลตาม filter chips
+        let filteredData = allDetailStudents;
+
+        if (activeBranchFilter !== 'ทั้งหมด') {
+            filteredData = filteredData.filter(s => s.displayBranch === activeBranchFilter);
+        }
+
+        if (activeLevelFilter !== 'ทุกระดับชั้น') {
+            filteredData = filteredData.filter(s => s.level === activeLevelFilter);
+        }
+
+        // อัปเดตจำนวนรายการ
+        countSpan.textContent = `(${formatNumber(filteredData.length)} รายการ)`;
+
+        tbody.innerHTML = '';
+
+        if (filteredData.length === 0) {
+            tbody.innerHTML =
+                `<tr><td colspan="9" class="text-center py-8 text-gray-500">ไม่พบข้อมูลที่ตรงกับเงื่อนไขการกรอง</td></tr>`;
+            return;
+        }
+
+        filteredData.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-white/40 transition-colors";
+            tr.innerHTML = `
+                    <td class="py-2.5 px-4 border-b border-gray-100">${item.displayBranch}</td>
+                    <td class="py-2.5 px-4 border-b border-gray-100 text-gray-500">${item.date || '-'}</td>
+                    <td class="py-2.5 px-4 border-b border-gray-100 font-medium text-gray-800">${item.name}</td>
+                    <td class="py-2.5 px-4 border-b border-gray-100">${item.nickname || '-'}</td>
+                    <td class="py-2.5 px-4 border-b border-gray-100"><span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-xs">${item.level || '-'}</span></td>
+                    <td class="py-2.5 px-4 border-b border-gray-100 text-right text-gray-500">${formatNumber(item.bookFee)}</td>
+                    <td class="py-2.5 px-4 border-b border-gray-100 text-right text-gray-500">${formatNumber(item.courseFee)}</td>
+                    <td class="py-2.5 px-4 border-b border-gray-100 text-right font-semibold text-brandRed">${formatNumber(item.total)}</td>
+                    <td class="py-2.5 px-4 border-b border-gray-100 text-center"><span class="bg-brandYellow/20 text-yellow-700 px-2 py-0.5 rounded-full text-xs whitespace-nowrap">${item.payType || '-'}</span></td>
+                `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- Render กราฟด้วย Chart.js ---
+    function renderCharts(role, branchRevenues, monthlyDataRaw) {
+        Chart.defaults.font.family = "'Prompt', sans-serif";
+        Chart.defaults.color = '#6b7280';
+
+        // --- Bar Chart ---
+        if (role === 'CEO') {
+            const barCtx = document.getElementById('branchBarChart').getContext('2d');
+            if (barChartInstance) barChartInstance.destroy();
+
+            const labels = Object.keys(branchRevenues);
+            const data = Object.values(branchRevenues);
+
+            barChartInstance = new Chart(barCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'รายได้รวม (บาท)',
+                        data: data,
+                        backgroundColor: '#fcb00e',
+                        borderRadius: 6,
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#e5e7eb' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+
+        // --- Line Chart ---
+        const lineCtx = document.getElementById('monthlyLineChart').getContext('2d');
+        if (lineChartInstance) lineChartInstance.destroy();
+
+        const monthLabels = Object.keys(monthlyDataRaw);
+        const monthData = Object.values(monthlyDataRaw);
+
+        lineChartInstance = new Chart(lineCtx, {
+            type: 'line',
+            data: {
+                labels: monthLabels,
+                datasets: [{
+                    label: 'รายได้รวม (บาท)',
+                    data: monthData,
+                    borderColor: '#d22121',
+                    backgroundColor: 'rgba(210, 33, 33, 0.1)',
+                    borderWidth: 3,
+                    pointBackgroundColor: '#ffffff',
+                    pointBorderColor: '#d22121',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    fill: true,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: { beginAtZero: true, grid: { borderDash: [4, 4], color: '#e5e7eb' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
+    }
+
+    // --- Render ตารางข้อมูลนักเรียนใน Sidebar (Data View) ---
+    function renderTable(tableData, role, selectedBranch) {
+        const tbody = document.getElementById('student-table-body');
+        const tableTitleSpan = document.getElementById('table-branch-name');
+
+        if (role === 'CEO') {
+            tableTitleSpan.innerText = "(ดูทั้งหมดทุกสาขา)";
+        } else {
+            tableTitleSpan.innerText = selectedBranch ? `(สาขา ${selectedBranch})` : "";
+        }
+
+        tbody.innerHTML = '';
+
+        if (tableData.length === 0) {
+            tbody.innerHTML =
+                `<tr><td colspan="9" class="text-center py-8 text-gray-500">ไม่พบข้อมูล หรือยังไม่ได้เชื่อมต่อ GAS</td></tr>`;
+            return;
+        }
+
+        tableData.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = "hover:bg-white/40 transition-colors";
+            tr.innerHTML = `
+                    <td class="py-3 px-6 border-b border-gray-100">${item.displayBranch}</td>
+                    <td class="py-3 px-6 border-b border-gray-100 text-gray-500">${item.date || '-'}</td>
+                    <td class="py-3 px-6 border-b border-gray-100 font-medium text-gray-800">${item.name}</td>
+                    <td class="py-3 px-6 border-b border-gray-100">${item.nickname || '-'}</td>
+                    <td class="py-3 px-6 border-b border-gray-100"><span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">${item.level || '-'}</span></td>
+                    <td class="py-3 px-6 border-b border-gray-100 text-right text-gray-500">${formatNumber(item.bookFee)}</td>
+                    <td class="py-3 px-6 border-b border-gray-100 text-right text-gray-500">${formatNumber(item.courseFee)}</td>
+                    <td class="py-3 px-6 border-b border-gray-100 text-right font-semibold text-brandRed">${formatNumber(item.total)}</td>
+                    <td class="py-3 px-6 border-b border-gray-100 text-center"><span class="bg-brandYellow/20 text-yellow-700 px-2 py-1 rounded-full text-xs whitespace-nowrap">${item.payType || '-'}</span></td>
+                `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // --- เริ่มต้นการทำงานเมื่อโหลดหน้าเสร็จ ---
+    window.onload = () => {
+        loadData();
+    };
+</script>
+</body>
+</html>
